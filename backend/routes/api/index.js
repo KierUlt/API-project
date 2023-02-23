@@ -1,12 +1,22 @@
 const router = require('express').Router();
+const bookingsRouter = require('./bookings.js');
+const reviewImagesRouter = require('./review-images.js');
+const reviewsRouter = require('./reviews.js');
 const sessionRouter = require('./session.js');
+const spotImagesRouter = require('./spot-images.js');
+const spotsRouter = require('./spots.js');
 const usersRouter = require('./users.js');
+
 const { restoreUser } = require('../../utils/auth.js');
 
 router.use(restoreUser);
 
+router.use('/bookings', bookingsRouter);
+router.use('/review-images', reviewImagesRouter);
+router.use('/reviews', reviewsRouter);
 router.use('/session', sessionRouter);
-
+router.use('/spot-images', spotImagesRouter);
+router.use('/spots', spotsRouter);
 router.use('/users', usersRouter);
 
 router.post('/test', function(req, res) {
