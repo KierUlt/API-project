@@ -14,11 +14,62 @@ module.exports = (sequelize, DataTypes) => {
       Spots.belongsTo(
         models.User,
         { foreignKey: 'ownerId'}
-      )
+      );
+      Spots.hasMany(
+        models.Reviews,
+        { foreignKey: 'spotId', onDelete: 'CASCADE'}
+      );
+      Spots.hasMany(
+        models.Bookings,
+        { foreignKey: 'spotId', onDelete: 'CASCADE'}
+      );
+      Spots.hasMany(
+        models.SpotImages,
+        { foreignkey: 'spotId', onDelete: 'CASCADE'}
+      );
     }
   }
   Spots.init({
-    ownerId: DataTypes.INTEGER
+    ownerId: {
+      allowNull: false,
+      type: DataTypes.INTEGER
+    },
+    address: {
+      allowNull: false,
+      type: DataTypes.STRING(30)
+    },
+    city: {
+      allowNull: false,
+      type: DataTypes.STRING(30)
+    },
+    state: {
+      allowNull: false,
+      type: DataTypes.STRING(30)
+    },
+    country: {
+      allowNull: false,
+      type: DataTypes.STRING(30)
+    },
+    lat: {
+      allowNull: false,
+      type: DataTypes.DECIMAL
+    },
+    lng: {
+      allowNull: false,
+      type: DataTypes.DECIMAL
+    },
+    name: {
+      allowNull: false,
+      type: DataTypes.STRING(30)
+    },
+    description: {
+      allowNull: false,
+      type: DataTypes.STRING(255)
+    },
+    price: {
+      allowNull: false,
+      type: DataTypes.DECIMAL
+    }
   }, {
     sequelize,
     modelName: 'Spots',
