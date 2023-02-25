@@ -71,19 +71,19 @@ router.get(
     }
 );
 
-router.use((err, req, res, next) => {
-  const errorMessage = {};
-  if(err.status === 401){
-    errorMessage.message = "Invalid credentials";
-    errorMessage.statusCode = err.status
-  }
-  if(err.status === 400){
-    errorMessage.message = "Validation error",
-    errorMessage.statusCode = 400
-    errorMessage.errors = err.errors;
-  }
-  res.status(err.status);
-  return res.json(errorMessage)
-});
+// router.use((err, req, res, next) => {
+//   const errorMessage = {};
+//   if(err.status === 401){
+//     errorMessage.message = "Invalid credentials";
+//     errorMessage.statusCode = err.status
+//   }
+//   if(err.status === 400){
+//     errorMessage.message = "Validation error",
+//     errorMessage.statusCode = 400
+//     errorMessage.errors = err.errors;
+//   }
+//   res.status(err.status);
+//   res.json(errorMessage)
+// });
 
 module.exports = router;
