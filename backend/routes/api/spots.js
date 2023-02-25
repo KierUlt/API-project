@@ -54,14 +54,62 @@ router.get('/', async (req, res) => {
         }
         spotsFound.push(newSpot);
     })
-
-
-
     res.status(200).json(spotsFound);
 });
 
-router.get('/current', async (req, res) => {
+router.get('/current', requireAuth, async (req, res) => {
+    let currentUser = req.user;
+    const ownedSpots = await Spots.findAll({
+        where: {
+            ownerId: currentUser.id
+        },
+        include: [
+            {
+                model: Reviews,
+                attributes: ['stars']
+            },
+            {
+                model: SpotImages,
+                attributes: ['url', 'preview']
+            }
+        ]
+    });
+    let spotsFound = [];
 
+    ownedSpots.forEach(spot => {
+        let totalReviews = spot.Reviews.length;
+        let sum = 0;
+
+        spot.Reviews.forEach(review => {
+            sum += review.stars;
+        })
+
+        spot.avgRating = sum / totalReviews;
+
+        spot.SpotImages.forEach(img => {
+            if(img.preview) spot.previewImage = img.url;
+            else spot.previewImage = "No image found"
+        })
+        const newSpot = {
+            id: spot.id,
+            ownerId: spot.ownerId,
+            address: spot.address,
+            city: spot.city,
+            state: spot.state,
+            country: spot.state,
+            lat: spot.lat,
+            lng: spot.lng,
+            name: spot.name,
+            description: spot.description,
+            price: spot.price,
+            createdAt: spot.createdAt,
+            updatedAt: spot.updatedAt,
+            avgRating: spot.avgRating,
+            previewImage: spot.previewImage
+        }
+        spotsFound.push(newSpot);
+    })
+    res.status(200).json(spotsFound);
 });
 
 router.get('/:spotId', async (req, res) => {
