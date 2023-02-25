@@ -112,8 +112,50 @@ router.get('/current', requireAuth, async (req, res) => {
     res.status(200).json(spotsFound);
 });
 
-router.get('/:spotId', async (req, res) => {
+router.get('/:spotId', async (req, res, next) => {
+    let spotId = req.params.spotId;
+    let foundSpot = await Spots.findByPk(spotId);
 
+    if(!foundSpot){
+        const err = {};
+        err.status = 404;
+        err.statusCode = 404;
+        err.title = 'Not found';
+        err.message = "Spot couldn't be found";
+        return next(err);
+    }
+    foundSpot = foundSpot.toJSON();
+    const reviewCount = await Reviews.count({
+        where: {
+            spotId: spotId
+        }
+    });
+
+    foundSpot.numReviews = reviewCount;
+    const sum = await Reviews.sum('stars',{
+        where: {
+            spotId: spotId
+        }
+    });
+
+    foundSpot.avgStarRatig = sum / reviewCount;
+
+    const spotImgList = await SpotImages.findAll({
+        where: {
+            spotId: spotId
+        },
+        attributes: ['id', 'url', 'preview']
+    });
+
+    foundSpot.SpotImages = spotImgList;
+
+    foundSpot.Owner = await User.findByPk(foundSpot.ownerId, {
+        attributes: {
+            exclude: ['username']
+        }
+    });
+
+    res.json(foundSpot);
 });
 
 router.get('/:spotId/reviews', async (req, res) => {
