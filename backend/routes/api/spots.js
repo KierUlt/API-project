@@ -1,8 +1,45 @@
 const express = require('express');
-
+const { check } = require('express-validator');
 const { requireAuth } = require('../../utils/auth');
-const { User, Reviews, ReviewImages, Spots, SpotImages } = require('../../db/models');
+const { User, Reviews, ReviewImages, Spots, SpotImages, sequelize } = require('../../db/models');
 const router = express.Router();
+const { handleValidationErrors } = require('../../utils/validation');
+
+const validateSpot = [
+    check("address")
+        .notEmpty()
+        .withMessage("Street address is required"),
+    check("city")
+        .notEmpty()
+        .withMessage("City is required"),
+    check("state")
+        .notEmpty()
+        .withMessage("State is required"),
+    check("country")
+        .notEmpty()
+        .withMessage("Country is required"),
+    check("lat", "Must enter a latitude")
+        .notEmpty()
+        .bail()
+        .isDecimal(),
+    check("lng", "Must enter a longtitude")
+        .notEmpty()
+        .bail()
+        .isDecimal(),
+    check("name", "Name is required")
+        .notEmpty()
+        .isLength({ max: 50 })
+        .withMessage("Name must be less than 50 characters"),
+    check("description")
+        .notEmpty()
+        .withMessage("Description is required"),
+    check("price", "Price per day is required")
+        .notEmpty()
+        .bail()
+        .isInt({min: 1})
+        .withMessage("Price cannot be less than 1"),
+    handleValidationErrors
+  ];
 
 router.get('/', async (req, res) => {
     let result = {}
@@ -166,8 +203,13 @@ router.get('/:spotId/bookings', async (req, res) => {
 
 });
 
-router.post('/', async (req, res) => {
-
+router.post('/', validateSpot, requireAuth, async (req, res) => {
+    let currentUser = req.user;
+    const newSpot = req.body;
+    newSpot.ownerId = currentUser.id;
+    const newSpotFinal = await Spots.create(newSpot);
+    res.status(201);
+    return res.json(newSpotFinal);
 });
 
 router.post('/:spotId/images', async (req, res) => {
