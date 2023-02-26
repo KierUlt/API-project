@@ -13,11 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       Reviews.belongsTo(
         models.User,
-        { foreignKey: 'userId', onDelete: 'CASCADE'}
+        { foreignKey: 'userId'}
       );
       Reviews.belongsTo(
         models.Spots,
-        { foreignKey: 'spotId', onDelete: 'CASCADE'}
+        { foreignKey: 'spotId'}
       );
       Reviews.hasMany(
         models.ReviewImages,

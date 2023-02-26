@@ -50,6 +50,16 @@ const validateSpotImage = [
         .withMessage('Preview must be a boolean value'),
     handleValidationErrors
 ];
+const validateReview = [
+    check("review")
+        .notEmpty()
+        .withMessage("Review text is required"),
+    check("stars", "Stars must be an integer from 1 to 5")
+        .notEmpty()
+        .bail()
+        .isInt({ min: 0, max: 5 }),
+    handleValidationErrors
+];
 const spotBelongsToUser = async (req, res, next) => {
     let { spotId } = req.params;
     // console.log(spotId)
@@ -274,7 +284,7 @@ router.post('/:spotId/images', requireAuth, validateSpotImage, spotBelongsToUser
     if(!spotDetails){
         let err = {};
         err.status = 404;
-        err.title = "Spot not found";
+        //err.title = "Spot not found";
         err.message = "Spot could not be found";
         return next(err);
     }
@@ -288,8 +298,34 @@ router.post('/:spotId/images', requireAuth, validateSpotImage, spotBelongsToUser
     res.json({id: spotImg.id, url: spotImg.url, preview: spotImg.preview});
 });
 
-router.post('/:spotId/reviews', async (req, res) => {
-
+router.post('/:spotId/reviews', requireAuth, validateReview, async (req, res, next) => {
+    let { user } = req;
+    let { spotId } = req.params;
+    let { review, stars } = req.body;
+    let foundSpot = await Spots.findByPk(spotId);
+    let userReview = await Reviews.findOne({
+        where: {
+            userId: user.id,
+            spotId: spotId
+        }
+    });
+    if(!foundSpot){
+        let err = {};
+        err.status = 404;
+        //err.title = "Spot not found";
+        err.message = "Spot could not be found";
+        return next(err);
+    }
+    if(userReview){
+        let err = {};
+        err.status = 403;
+        err.statusCode = 404;
+        err.message = "User review already exists";
+        return next(err);
+    }
+    let makeReview = await user.createReview({ spotId, review, stars})
+    res.status(201);
+    res.json(makeReview);
 });
 
 router.post('/:spotId/bookings', async (req, res) => {

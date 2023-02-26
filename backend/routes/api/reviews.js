@@ -50,8 +50,30 @@ router.get('/current', requireAuth, async (req, res) => {
     res.json(pushedReviews);
 });
 
-router.post('/:reviewId/images', async (req, res) => {
+router.post('/:reviewId/images', requireAuth, async (req, res, next) => {
+    let { user } = req;
+    let reviewId = req.params.reviewId;
+    let { url } = req.body;
 
+    let foundReview = await Reviews.findByPk(reviewId);
+
+    if(!foundReview){
+        let err = {};
+        err.status = 404;
+        err.statusCode = 404;
+        err.message = "Review couldn't be found";
+        return next(err);
+    }
+    if(user.id !== foundReview.userId){
+        let err = {};
+        err.status = 404;
+        err.statusCode = 404;
+        err.message = "Not authorized user";
+        return next(err);
+    }
+    let newReviewImage = await foundReview.createReviewImage({ url });
+    let idReviewImage = { id: newReviewImage.id, url: newReviewImage.url}
+    res.json(idReviewImage)
 });
 
 router.put('/:reviewId', async (req, res) => {
