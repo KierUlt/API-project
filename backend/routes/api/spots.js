@@ -226,7 +226,32 @@ router.get('/:spotId', async (req, res, next) => {
 });
 
 router.get('/:spotId/reviews', async (req, res) => {
-
+    const { spotId } = req.params;
+    const spotDetails = await Spots.findByPk(spotId);
+    if(!spotDetails){
+        res.status(404);
+        return res.json({message: "Spot couldn't be found", statusCode: 404});
+    }
+    const reviews = await spotDetails.getReviews({
+        include: [
+            {
+                model: User,
+                attributes: ['id', 'firstName', 'lastName']
+            },
+            {
+                model: ReviewImages,
+                attributes: ['id', 'url']
+            }
+        ]
+    })
+    if(reviews.length <= 0) return res.json("No reviews found");
+    let foundReviews = [];
+    reviews.forEach(review => {
+        let foundReview = review.toJSON();
+        if(foundReview.ReviewImages.length <= 0) foundReview.ReviewImages = "No review images found";
+        foundReviews.push(foundReview)
+    });
+    res.json({ Reviews: foundReviews});
 });
 
 router.get('/:spotId/bookings', async (req, res) => {
