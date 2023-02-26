@@ -39,8 +39,38 @@ const validateSpot = [
         .isInt({min: 1})
         .withMessage("Price cannot be less than 1"),
     handleValidationErrors
-  ];
-
+];
+const validateSpotImage = [
+    check('url')
+        .notEmpty()
+        .withMessage('url must be defined'),
+    check('preview')
+        .notEmpty()
+        .isBoolean()
+        .withMessage('Preview must be a boolean value'),
+    handleValidationErrors
+];
+const spotBelongsToUser = async (req, res, next) => {
+    let { spotId } = req.params;
+    console.log(spotId)
+    const spotDetails = await Spots.findByPk(spotId);
+    console.log(spotDetails)
+    const user = req.user;
+    if(!spotDetails){
+        let err = {};
+        err.status = 404;
+        err.message = "Spot couldn't be found"
+        return next(err);
+    }
+    if (user.id !== spotDetails.ownerId) {
+        let err = {};
+        err.title = "Authorization error";
+        err.status = 403;
+        err.message = "You are not the authorized owner for this spot";
+        return next(err);
+    };
+    return next();
+};
 router.get('/', async (req, res) => {
     let result = {}
     result.allSpots = await Spots.findAll({
@@ -212,8 +242,25 @@ router.post('/', validateSpot, requireAuth, async (req, res) => {
     return res.json(newSpotFinal);
 });
 
-router.post('/:spotId/images', async (req, res) => {
+router.post('/:spotId/images', requireAuth, validateSpotImage, spotBelongsToUser,  async (req, res, next) => {
+    let { spotId } = req.params;
+    let { url, preview } = req.body;
+    const spotDetails = await Spots.findByPk(spotId);
+    if(!spotDetails){
+        let err = {};
+        err.status = 404;
+        err.title = "Spot not found";
+        err.message = "Spot could not be found";
+        return next(err);
+    }
 
+    let spotImg = await spotDetails.createSpotImage({
+        spotId: spotId,
+        url: url,
+        preview: preview
+    });
+
+    res.json({id: spotImg.id, url: spotImg.url, preview: spotImg.preview});
 });
 
 router.post('/:spotId/reviews', async (req, res) => {
@@ -224,8 +271,21 @@ router.post('/:spotId/bookings', async (req, res) => {
 
 });
 
-router.put('/:spotId', async (req, res) => {
-
+router.put('/:spotId', requireAuth, validateSpot, spotBelongsToUser, async (req, res, next) => {
+    const { address, city, state, country, lat, lng, name, description, price } = req.body;
+    const spotId = req.params.spotId;
+    const editSpot = await Spots.findByPk(spotId);
+    editSpot.address = address;
+    editSpot.city = city;
+    editSpot.state = state;
+    editSpot.country = country;
+    editSpot.lat = lat;
+    editSpot.lng = lng;
+    editSpot.name = name;
+    editSpot.description = description;
+    editSpot.price = price;
+    await editSpot.save();
+    res.json(editSpot);
 });
 
 router.delete('/:spotId', async (req, res) => {

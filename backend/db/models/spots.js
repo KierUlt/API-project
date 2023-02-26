@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
         { foreignKey: 'ownerId'}
       );
       Spots.hasMany(
-        models.Reviews,
+        models.Bookings,
         { foreignKey: 'spotId', onDelete: 'CASCADE'}
       );
       Spots.hasMany(
-        models.Bookings,
+        models.Reviews,
         { foreignKey: 'spotId', onDelete: 'CASCADE'}
       );
       Spots.hasMany(
