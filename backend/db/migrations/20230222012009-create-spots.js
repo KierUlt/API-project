@@ -12,7 +12,8 @@ module.exports = {
       ownerId: {
         allowNull: false,
         type: Sequelize.INTEGER,
-        references: { model: 'Users'}
+        references: { model: 'Users'},
+        onDelete: 'CASCADE'
       },
       address: {
         allowNull: false,
@@ -60,6 +61,7 @@ module.exports = {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
+
     });
   },
   async down(queryInterface, Sequelize) {
