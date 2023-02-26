@@ -52,9 +52,9 @@ const validateSpotImage = [
 ];
 const spotBelongsToUser = async (req, res, next) => {
     let { spotId } = req.params;
-    console.log(spotId)
+    // console.log(spotId)
     const spotDetails = await Spots.findByPk(spotId);
-    console.log(spotDetails)
+    // console.log(spotDetails)
     const user = req.user;
     if(!spotDetails){
         let err = {};
@@ -288,8 +288,13 @@ router.put('/:spotId', requireAuth, validateSpot, spotBelongsToUser, async (req,
     res.json(editSpot);
 });
 
-router.delete('/:spotId', async (req, res) => {
-
+router.delete('/:spotId', requireAuth, spotBelongsToUser, async (req, res) => {
+    const { spotId } = req.params;
+    const deleteSpot = await Spots.findByPk(spotId);
+    console.log(spotId);
+    await deleteSpot.destroy();
+    res.json({"message": "Successfully deleted", "statusCode": 200});
+    //SQLITE constraint error not sure how to fix
 });
 
 module.exports = router;
