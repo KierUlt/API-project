@@ -3,6 +3,26 @@ const { requireAuth } = require("../../utils/auth");
 const { Spots, SpotImages, Bookings, sequelize } = require('../../db/models');
 const router = express.Router();
 
+const doesBookingExist = async (req, res, next) => {
+    let { bookingId } = req.params;
+    let foundBooking = await Bookings.findByPk(bookingId);
+    if(!foundBooking){
+        let err = {
+            status: 404,
+            statusCode: 404,
+            message: "Booking couldn't be found"
+        }
+        return next(err);
+    }
+    return next();
+}
+
+const convertDate = (date) => {
+    let [year, month, day] = date.split("-");
+    let newDate = new Date(year, month-1, day);
+    return newDate;
+}
+
 router.get('/current', requireAuth, async (req, res) => {
     let { user } = req;
     let userBookings = await Bookings.findAll({
@@ -41,11 +61,74 @@ router.get('/current', requireAuth, async (req, res) => {
     return res.json(foundBookingsObj);
 });
 
-router.put('/:bookingId', requireAuth, async (req, res)=> {
+router.put('/:bookingId', requireAuth, doesBookingExist, async (req, res, next)=> {
+    let { bookingId } = req.params;
+    let currentUser = req.user;
+    let { startDate, endDate } = req.body;
+    let foundBooking = await Bookings.findByPk(bookingId);
+    let convertedStartDate = convertDate(startDate);
+    let convertedEndDate = convertDate(endDate);
+    let currentDate = new Date();
 
+    if(convertedEndDate < currentDate || convertedStartDate <= currentDate){
+        let err = {
+            status: 403,
+            statusCode: 403,
+            message: "Past bookings can't be modified"
+        }
+        return next(err);
+    }
+
+    if(convertedEndDate <= convertedStartDate){
+        let err = {
+            status: 400,
+            statusCode: 400,
+            message: "Validation error",
+            errors: {
+                endDate: "endDate cannot come before startDate"
+            }
+        }
+        return next(err);
+    }
+
+    let spotId = foundBooking.spotId;
+    let foundSpot = await Spots.findByPk(spotId);
+    let confirmedBookings = await foundSpot.getBookings();
+
+    confirmedBookings.forEach(booking => {
+        if (booking.id !== foundBooking.id){
+            let confirmedBooking = booking.toJSON();
+            let err = {
+                status: 403,
+                statusCode: 403,
+                message: "Sorry, this spot is already booked for the specified dates",
+                errors: {}
+            }
+            let bookedStart = convertDate(confirmedBooking.startDate);
+            let bookedEnd = convertDate(confirmedBooking.endDate);
+            if(bookedStart <= convertedStartDate && bookedEnd >= convertedStartDate){
+                err.errors.startDate = "Start date conflicts with an existing booking";
+                if(bookedEnd >= convertedEndDate && bookedStart <= convertedEndDate){
+                    err.errors.endDate = "End date conflicts with an existing booking";
+                }
+                return next(err);
+            }
+            if(bookedEnd >= convertedEndDate && bookedStart <= convertedEndDate){
+                err.errors.endDate = "End date conflicts with an existing booking";
+                if(bookedStart <= convertedStartDate && bookedEnd >= convertedStartDate){
+                    err.errors.startDate = "Start date conflicts with an existing booking";
+                }
+                return next(err);
+            }
+        }
+    })
+    foundBooking.startDate = convertedStartDate;
+    foundBooking.endDate = convertedEndDate;
+    await foundBooking.save();
+    res.json(foundBooking);
 });
 
-router.delete('/:bookingId', async (req, res)=> {
+router.delete('/:bookingId', async (req, res, next)=> {
 
 });
 module.exports = router;
