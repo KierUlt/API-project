@@ -4,6 +4,7 @@ const { requireAuth } = require('../../utils/auth');
 const { User, Reviews, ReviewImages, Spots, SpotImages, Bookings, sequelize } = require('../../db/models');
 const router = express.Router();
 const { handleValidationErrors } = require('../../utils/validation');
+const { Op } = require('sequelize');
 
 const validateSpot = [
     check("address")
@@ -69,6 +70,41 @@ const validateBooking = [
         .withMessage("Please enter an end date"),
     handleValidationErrors
 ]
+const validateQuery = [
+    check("minPrice")
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("Minimum price must be greater than or equal to 0"),
+    check("maxPrice")
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("Maximum price must be greater than or equal to 0"),
+    check("page")
+        .optional()
+        .isInt({ min: 1})
+        .withMessage("Page must be greater than or equal to 1"),
+    check("size")
+        .optional()
+        .isInt({ min: 1})
+        .withMessage("Size must be greater than or equal to 1"),
+    check("maxLat")
+        .optional()
+        .isDecimal()
+        .withMessage("Maximum latitude is not valid"),
+    check("minLat")
+        .optional()
+        .isDecimal()
+        .withMessage("Minimum latitude is not valid"),
+    check("maxLng")
+        .optional()
+        .isDecimal()
+        .withMessage("Maximum longitude is not valid"),
+    check("minLng")
+        .optional()
+        .isDecimal()
+        .withMessage("Minimum longitude is not valid"),
+    handleValidationErrors
+];
 
 const spotBelongsToUser = async (req, res, next) => {
     let { spotId } = req.params;
@@ -92,9 +128,22 @@ const spotBelongsToUser = async (req, res, next) => {
     return next();
 };
 
-router.get('/', async (req, res) => {
-    let result = {}
-    result.allSpots = await Spots.findAll({
+router.get('/', validateQuery, async (req, res, next) => {
+    let { maxLat, maxLng, maxPrice, minLat, minLng, minPrice, page, size } = req.query;
+    page = Number(page);
+    size = Number(size);
+    if(!page) page = 1;
+    if(page > 10) page = 10;
+    if(!size) size = 20;
+
+    let pagination = {};
+    if(parseInt(page) >= 1 && parseInt(size) >1){
+        pagination.limit = size;
+        pagination.offset = (page -1) * size;
+    }
+
+    let query = {
+        where: {},
         include: [
             {
                 model: Reviews,
@@ -104,12 +153,72 @@ router.get('/', async (req, res) => {
                 model: SpotImages,
                 attributes: ['url', 'preview']
             }
-        ]
-    });
+        ],
+        ...pagination
+    };
+
+    if (maxLat && !minLat) {
+        query.where.lat = {
+            [Op.lte]: maxLat
+        }
+    };
+    if (!maxLat && minLat) {
+        query.where.lat = {
+            [Op.gte]: minLat
+        }
+    };
+    if (maxLat && minLat) {
+        query.where.lat = {
+            [Op.and]: {
+                [Op.lte]: maxLat,
+                [Op.gte]: minLat
+            }
+        }
+    };
+
+    if (maxLng && !minLng) {
+        query.where.lng = {
+            [Op.lte]: maxLng
+        }
+    };
+    if (!maxLng && minLng) {
+        query.where.lng = {
+            [Op.gte]: minLng
+        }
+    };
+    if (maxLng && minLng) {
+        query.where.lng = {
+            [Op.and]: {
+                [Op.lte]: maxLng,
+                [Op.gte]: minLng
+            }
+        }
+    };
+
+    if(maxPrice && !minPrice){
+        query.where.price = {
+            [Op.gte]: maxPrice
+        }
+    };
+    if (maxPrice && minPrice) {
+        query.where.price = {
+            [Op.and]: {
+                [Op.lte]: maxPrice,
+                [Op.gte]: minPrice
+            }
+        }
+    };
+    if (!maxPrice && minPrice) {
+        query.where.price = {
+            [Op.gte]: minPrice
+        }
+    };
+
+    let searchSpots = await Spots.findAll(query);
 
     let spotsFound = [];
 
-    result.allSpots.forEach(spot => {
+    searchSpots.forEach(spot => {
         let totalReviews = spot.Reviews.length;
         let sum = 0;
 
@@ -123,13 +232,13 @@ router.get('/', async (req, res) => {
             if(img.preview) spot.previewImage = img.url;
             else spot.previewImage = "No image found"
         })
-        const newSpot = {
+        let newSpot = {
             id: spot.id,
             ownerId: spot.ownerId,
             address: spot.address,
             city: spot.city,
             state: spot.state,
-            country: spot.state,
+            country: spot.country,
             lat: spot.lat,
             lng: spot.lng,
             name: spot.name,
@@ -184,7 +293,7 @@ router.get('/current', requireAuth, async (req, res) => {
             address: spot.address,
             city: spot.city,
             state: spot.state,
-            country: spot.state,
+            country: spot.country,
             lat: spot.lat,
             lng: spot.lng,
             name: spot.name,
