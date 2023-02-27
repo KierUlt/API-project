@@ -254,7 +254,7 @@ router.get('/', validateQuery, async (req, res, next) => {
     res.status(200).json(spotsFound);
 });
 
-router.get('/current', requireAuth, async (req, res) => {
+router.get('/current', requireAuth, async (req, res, next) => {
     let currentUser = req.user;
     const ownedSpots = await Spots.findAll({
         where: {
@@ -306,6 +306,14 @@ router.get('/current', requireAuth, async (req, res) => {
         }
         spotsFound.push(newSpot);
     })
+    if(!spotsFound.length){
+        let err = {
+            status: 403,
+            statusCode: 403,
+            message: "User has no current spots"
+        }
+        return next(err);
+    }
     res.status(200).json(spotsFound);
 });
 
