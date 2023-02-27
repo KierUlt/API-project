@@ -128,7 +128,31 @@ router.put('/:bookingId', requireAuth, doesBookingExist, async (req, res, next)=
     res.json(foundBooking);
 });
 
-router.delete('/:bookingId', async (req, res, next)=> {
-
+router.delete('/:bookingId', requireAuth, doesBookingExist, async (req, res, next)=> {
+    let { bookingId } = req.params;
+    let user = req.user;
+    let foundBooking = await Bookings.findByPk(bookingId);
+    let foundSpot = await foundBooking.getSpot();
+    let bookingStartDate = convertDate(foundBooking.startDate);
+    let currentDate = new Date();
+    if(user.id !== foundSpot.ownerId && user.id !== foundBooking){
+        let err = {
+            status: 403,
+            statusCode: 403,
+            message: "Must have authorization to delete booking"
+        }
+        return next(err);
+    }
+    if(bookingStartDate <= currentDate){
+        let err = {
+            status: 403,
+            statusCode: 403,
+            message: "Bookings that have been started can't be deleted"
+        }
+        return next(err);
+    }
+    await foundBooking.destroy()
+    res.status(200);
+    res.json({message: "Successfully deleted", statusCode: 200})
 });
 module.exports = router;
