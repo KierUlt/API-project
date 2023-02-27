@@ -41,7 +41,7 @@ router.get('/current', requireAuth, async (req, res) => {
     return res.json(foundBookingsObj);
 });
 
-router.put('/:bookingId', async (req, res)=> {
+router.put('/:bookingId', requireAuth, async (req, res)=> {
 
 });
 
