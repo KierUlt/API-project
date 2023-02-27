@@ -1,7 +1,20 @@
 const express = require('express');
+const { check } = require('express-validator');
 const { requireAuth } = require("../../utils/auth");
 const { Reviews, Spots, User, SpotImages, ReviewImages, sequelize } = require('../../db/models');
 const router = express.Router();
+const { handleValidationErrors } = require('../../utils/validation');
+
+const validateReview = [
+    check("review")
+        .notEmpty()
+        .withMessage("Review text is required"),
+    check("stars", "Stars must be an integer from 1 to 5")
+        .notEmpty()
+        .bail()
+        .isInt({ min: 0, max: 5 }),
+    handleValidationErrors
+];
 
 router.get('/current', requireAuth, async (req, res) => {
     const { user } = req;
@@ -76,12 +89,47 @@ router.post('/:reviewId/images', requireAuth, async (req, res, next) => {
     res.json(idReviewImage)
 });
 
-router.put('/:reviewId', async (req, res) => {
-
+router.put('/:reviewId', requireAuth, validateReview, async (req, res, next) => {
+    let { reviewId } = req.params;
+    let user = req.user
+    let { stars, review } = req.body
+    let foundReview = await Reviews.findByPk(reviewId);
+    if(!foundReview){
+        let err = {};
+        err.status = 404;
+        err.message = "Review couldn't be found";
+        return next(err);
+    }
+    if(user.id !== foundReview.userId){
+        let err = {};
+        err.status = 403;
+        err.message = "Not authorized user";
+        return next(err);
+    }
+    foundReview.stars = stars;
+    foundReview.review = review;
+    await foundReview.save();
+    res.json(foundReview);
 });
 
-router.delete('/:reviewId', async (req, res) => {
-
+router.delete('/:reviewId', async (req, res, next) => {
+    let { reviewId } = req.params;
+    let user = req.user;
+    let foundReview = await Reviews.findByPk(reviewId);
+    if(!foundReview){
+        let err = {};
+        err.status = 404;
+        err.message = "Review couldn't be found";
+        return next(err);
+    }
+    if(user.id !== foundReview.userId){
+        let err = {};
+        err.status = 403;
+        err.message = "Not authorized user";
+        return next(err);
+    }
+    await foundReview.destroy();
+    res.json({message: "Successfully deleted", statusCode: 200})
 });
 
 module.exports = router;

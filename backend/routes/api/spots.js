@@ -264,8 +264,41 @@ router.get('/:spotId/reviews', async (req, res) => {
     res.json({ Reviews: foundReviews});
 });
 
-router.get('/:spotId/bookings', async (req, res) => {
+router.get('/:spotId/bookings', async (req, res, next) => {
+    let { user } = req;
+    let spotId = req.params.spotId;
+    let foundSpot = await Spots.findByPk(spotId);
+    if(!foundSpot){
+        let err = {};
+        err.status = 404;
+        err.statusCode = 404;
+        err.message = "Spot couldn't be found";
+        return next(err);
+    }
+    let foundSpotBookings = [];
+    if (foundSpot.ownerId !== user.id){
+        let allBookings = await foundSpot.getBookings({attributes: ['spotId', 'startDate', 'endDate']});
+        allBookings.forEach(booking => {
+            booking = booking.toJSON();
+            foundSpotBookings.push(booking);
+        });
+        return res.json({Bookings: foundSpotBookings});
+    }
+    let bookings = await foundSpot.getBookings({
+        include: [
+            {
+                model: User,
+                attributes: ['id', 'firstName', 'lastName']
+            }
+        ]
+    })
 
+    if(bookings.length <= 0) return res.json({ message: "No available bookings for spot"});
+    bookings.forEach(booking => {
+        booking = booking.toJSON();
+        foundSpotBookings.push(booking);
+    })
+    res.json({Bookings: foundSpotBookings})
 });
 
 router.post('/', validateSpot, requireAuth, async (req, res) => {
